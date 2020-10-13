@@ -11,7 +11,7 @@ It's in Python, so it should be built into your IDE. It's integrated, after all.
 
 ### Helpful API commands I used
 I mean most of what I did had to do with API commands, so...a lot of 
-        db.collection("collection_name").document("document_name").set() and .get() and .delete() and .stream()
+    db.collection("collection_name").document("document_name").set() and .get() and .delete() and .stream()
 ...as a small sample.
 
 ### Screenshot
