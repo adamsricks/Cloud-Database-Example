@@ -7,20 +7,23 @@ import glob
 import json
 
 
-
+# initializes firestore (duh)
 def initialize_firestore():
     """
     Create database connection
     """
 
-    # Use the application default credentials
+    # Your private key reference and projectId will go here
     cred = credentials.Certificate("private key.json")
-    firebase_admin.initialize_app(cred)
+    firebase_admin.initialize_app(cred, {
+        'projectId': 'cloud-database-example'
+    })
 
     # Get reference to database
     db = firestore.client()
     return db
 
+# clears console window
 def clear():
     # for windows 
     if name == 'nt': 
@@ -30,38 +33,21 @@ def clear():
     else: 
         _ = system('clear') 
 
-def addCustomer(db, first_name, last_name, location, phone):
-    pass
-
-def deleteCustomer(db, first_name, last_name):
-    pass
-
-def editCustomer(db, first_name, last_name):
-    pass
-
-def addOrder(db, first_name, last_name, location, time, order_contents):
-    pass
-
-def deleteOrder(db, order_id):
-    pass
-
-def editOrder(db, order_id):
-    pass
-
 # prints options
 def printOptions():
     print("See all customers (sc)")
     print("Add customer (ac)")
-    print("Delete customer (dc)")
     print("Edit customer (ec)")
+    print("Delete customer (dc)")
     print("See all orders (so)")
     print("Add order (ao)")
-    print("Delete order (do)")
     print("Edit order (eo)")
+    print("Delete order (do)")
     print()
     print("Clear screen (c)")
     print("Exit (q)")
 
+# prints all fields in a document
 def printFields(db, collection, document):
     doc = db.collection(collection).document(document)
     doc = doc.get().to_dict()
@@ -77,62 +63,182 @@ def printDocuments(db, collection):
     for doc in docList:
         # print(f'{doc.id} => {doc.to_dict()}')
         print(f'{doc.id}')
-    print()
 
-def collectionNameEnter():
-    print("Which collection would you like to enter? (0,1,2,3,4) ")
-    collection = input("> ")
-    collection = returnCollection(collection)
-    if collection == None:
-        print("Please enter 0,1,2,3,4")
-        collection = collectionNameEnter()
-    else:
-        return collection
+# prints all customer details
+def printCustomerDetails(db, name):
+    doc = db.collection("customers").document(name).get()
+    doc = doc.to_dict()
+    for f in doc:
+        print("{} => {}".format(f, doc[f]))
+        print()
 
-def newDoc(db, collection):
-    print("What is the name of your new doc?")
+# prints all customers
+def printCustomers(db):
+    collection = "customers"
+    printDocuments(db, collection)
+
+# create new customer
+def addCustomer(db):
+    print("What is the name of your new customer?")
     name = input("> ")
-    db.collection(collection).document(name).set({"name" : name})
+    print("What is the location of your new customer?")
+    location = input("> ")
+    print("What is the phone number of your new customer?")
+    phone = input("> ")
+    db.collection("customers").document(name).set({"name" : name, "location" : location, "phone" : phone})
 
-def editDoc(db, collection):
-    print("Which document would you like to edit?")
+# edit customer details
+def editCustomer(db):
+    print("Which customer would you like to edit?")
     name = input("> ")
-    if (db.collection(collection).document(name).get().exists):
-        return name
+    if (db.collection("customers").document(name).get().exists):
+        print()
+        printCustomerDetails(db, name)
+        print()
+        print("Which field would you like to edit?")
+        print()
+        field = input("> ")
+        while field == "name":
+            print("Cannot change name; must make new customer file")
+            print("Which field would you like to edit?")
+            print()
+            field = input("> ")
+        while field != "location" and field != "phone":
+            print("Field not valid")
+            print("Which field would you like to edit?")
+            print()
+            field = input("> ")
+        print()
+        print("What would you like the new field to read?")
+        change = input("> ")
+        db.collection("customers").document(name).set({field : change}, merge=True)
+        print("Edit successful")
     else:
-        print("Document does not exist")
-        return None
+        print("Customer does not exist")
 
-def delDoc(db, collection):
-    print("Which document would you like to delete?")
-    document = input("> ") 
-    print("Are you sure you want to delete this document? (y/n)")
+
+# deletes customer
+def delCustomer(db):
+    print("Which customer would you like to delete?")
+    name = input("> ") 
+    print("Are you sure you want to delete this customer? (y/n)")
     yon = input("> ")
     if yon == "y":
-        if (db.collection(collection).document(document).get().exists):
-            db.collection(collection).document(document).delete()
+        if (db.collection("customers").document(name).get().exists):
+            db.collection("customers").document(name).delete()
         else:
-            print("Document does not exist")
+            print("Customer does not exist")
     else:
-        print("Document not deleted")
+        print("Customer not deleted")
 
-# changes value of document
-def editField(db, collection, document):
-    pass
 
-# create a new field in a document
-def newField(db, collection, document):
-    pass
+# prints all orders
+def printOrders(db):
+    num = 1
+    collection = "orders"
+    docList = db.collection(collection).stream()
+    print("# {:<14} {:<14} {:<14}".format("Name", "Location", "Time"))
+    for doc in docList:
+        dDoc = doc.to_dict()
+        print("{} {:<14} {:<14} {:<14}".format(num, dDoc["name"], dDoc["location"], dDoc["time"]))
+        num += 1
 
-def delField(db, collection, document):
-    print("Which field would you like to delete?")
-    field = input("> ")    
-    print("Are you sure you want to delete this field? (y/n)")
+
+# add new order
+def addOrder(db):
+    print("Which customer is this order for?")
+    printCustomers(db)
+    print()
+    name = input("> ")
+    if (db.collection("customers").document(name).get().exists):
+        print()
+        print("What is the location of the order?")
+        location = input("> ")
+        print("What is the time of the order?")
+        time = input("> ")
+        db.collection("orders").document().set({"name" : name, "location" : location, "time" : time})
+    else:
+        print("Customer does not exist")
+
+
+# changes value of field in an order
+def editOrder(db):
+    printOrders(db)
+    print("What is the number of the order you want to edit?")
+    docIdList = []
+    orders = db.collection("orders").stream()
+    for o in orders:
+        #docIdList[number] += str(o.id)
+        docIdList.append(o.id)
+        #print(docIdList[number])
+
+    #for doc in docIdList:
+        #print(doc)
+    num = int(input("> "))
+    # print(docIdList[num - 1])
+    while num <= 0 or num > len(docIdList):
+        print("Number not valid")
+        print("What is the number of the order you want to delete?")
+        num = int(input("> "))
+    order = db.collection("orders").document(docIdList[num - 1])
+    while not order.get().exists:
+        print("Order does not exist")
+        print("What is the number of the order you want to edit?")
+        num = input("> ")
+        order = db.collection("orders").document(docIdList[num - 1])
+    print("Which field would you like to edit?")
+    print("Time (t)")
+    print("Location (l)")
+    print()
+    which = ""
+    again = True
+    while again:
+        which = ""
+        which = input("> ")
+        if which == "t":
+            print("What is the new desired time?")
+            nTime = input("> ")
+            order.set({"time" : nTime}, merge=True)
+            again = False
+        elif which == "l":
+            print("What is the new desired location?")
+            nLocation = input("> ")
+            order.set({"location" : nLocation}, merge=True)
+            again = False
+        else:
+            print("Not a valid input")
+ 
+
+# deletes order
+def delOrder(db):
+    printOrders(db)
+    print("What is the number of the order you want to delete?")
+    docIdList = []
+    orders = db.collection("orders").stream()
+    for o in orders:
+        docIdList.append(o.id)
+
+    num = int(input("> "))
+    while num <= 0 or num > len(docIdList):
+        print("Number not valid")
+        print("What is the number of the order you want to delete?")
+        num = int(input("> "))
+    
+    #print(docIdList[num - 1])
+    
+    order = db.collection("orders").document(docIdList[num - 1])
+    while not order.get().exists:
+        print("Order does not exist")
+        print("What is the number of the order you want to delete?")
+        order = db.collection("orders").document(docIdList[num - 1])
+
+
+    print("Are you sure you want to delete this order? (y/n)")
     yon = input("> ")
     if yon == "y":
-        db.collection(collection).document(document).update({field: firestore.DELETE_FIELD })
+        order.delete()
     else:
-        print("Field not deleted")
+        print("Order not deleted")
 
 
 
@@ -140,88 +246,49 @@ def main():
     db = initialize_firestore()
 
     quitFlag = False
-    level = "r"
-    collection = ""
-    document = ""
     while not quitFlag:
         print()
         print("What would you like to do?")
         print()
-        printOptions(level)
+        printOptions()
         print()
         answer = input("> ")
-        # root level
-        if level == "r":
-            collection = ""
-            # see all
-            if answer == "s":
-                printCollections()
-            # enter collection
-            elif answer == "e":
-                level = "c"
-                collection = collectionNameEnter()
-            # quit
-            elif answer == "q":
-                quitFlag = True
-            # clear screen
-            elif answer == "c":
-                clear()
-            else:
-                pass
-        # collection level
-        elif level == "c":
-            # show all
-            if answer == "s":
-                printDocuments(db, collection)
-            # exit collection
-            elif answer == "ex":
-                level = "r"
-                collection = ""
-            # edit document
-            elif answer == "d":
-                document = editDoc(db, collection)
-                if document != None:
-                    level = "d"
-            # create new document
-            elif answer == "n":
-                newDoc(db, collection)
-            # delete document
-            elif answer == "x":
-                delDoc(db, collection)
-            # quit
-            elif answer == "q":
-                quitFlag = True
-            # clear screen
-            elif answer == "c":
-                clear()
-            else:
-                pass
-        # document level
-        elif level == "d":
-            # show all
-            if answer == "s":
-                printFields(db, collection, document)
-            # exit document
-            elif answer == "ex":
-                level = "c"
-                document = ""
-            # quit
-            elif answer == "d":
-                pass
-            elif answer == "n":
-                pass
-            elif answer == "x":
-                pass
-            elif answer == "q":
-                quitFlag = True
-            # clear screen
-            elif answer == "c":
-                clear()
-            else:
-                pass
+        # see customers
+        if answer == "sc":
+            printCustomers(db)
+        # add customer
+        elif answer == "ac":
+            addCustomer(db)
+        # edit customer
+        elif answer == "ec":
+            editCustomer(db)
+        # delete customer
+        elif answer == "dc":
+            delCustomer(db)
+        # see orders
+        elif answer == "so":
+            printOrders(db)
+        # add order
+        elif answer == "ao":
+            addOrder(db)
+        # edit order
+        elif answer == "eo":
+            editOrder(db) 
+            pass
+        # delete order
+        elif answer == "do":
+            delOrder(db)
+            pass
+        # clear
+        elif answer == "c":
+            clear()
+        # quit
+        elif answer == "q":
+            quitFlag = True
+        else:
+            print("Not a valid option")
 
-
-    print("exiting...")
+    print("Exiting...")
 
 
 if __name__ == "__main__":
